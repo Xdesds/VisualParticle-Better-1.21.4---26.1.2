@@ -1,0 +1,41 @@
+{
+	"schemaVersion": 1,
+	"id": "visualparticle-better",
+	"version": "${version}",
+	"name": "Visual Particle Better",
+	"description": "Client-side particle effects for attacks, walking, projectiles, and totem pops with an in-game Right Shift settings menu.",
+	"authors": [
+		"Me!"
+	],
+	"contact": {
+		"homepage": "https://fabricmc.net/",
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/visualparticle-better/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"particle.fx.ParticleFxMod"
+		],
+		"client": [
+			"particle.fx.ParticleFxClient"
+		]
+	},
+	"mixins": [
+		"visualparticle-better.mixins.json",
+		{
+			"config": "visualparticle-better.client.mixins.json",
+			"environment": "client"
+		}
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": ">=26.1 <=26.1.2",
+		"java": ">=25",
+		"fabric-lifecycle-events-v1": "*",
+		"fabric-key-mapping-api-v1": "*",
+		"fabric-rendering-v1": "*",
+		"fabric-resource-loader-v0": "*"
+	}
+}

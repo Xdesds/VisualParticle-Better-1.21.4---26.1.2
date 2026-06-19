@@ -1,0 +1,11 @@
+allprojects {
+    buildscript {
+        repositories {
+            maven { url = uri('C:/tmp/fabric-maven') }
+        }
+    }
+
+    repositories {
+        maven { url = uri('C:/tmp/fabric-maven') }
+    }
+}
