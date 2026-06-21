@@ -209,7 +209,7 @@ final class Particle3D {
 			return;
 		}
 
-		Vec3d cameraPos = CLIENT.gameRenderer.getCamera().getPos();
+		Vec3d cameraPos = CLIENT.gameRenderer.getCamera().getCameraPos();
 		float cameraYaw = CLIENT.gameRenderer.getCamera().getYaw();
 		float cameraPitch = CLIENT.gameRenderer.getCamera().getPitch();
 

@@ -6,6 +6,8 @@ import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.SliderWidget;
 import net.minecraft.text.Text;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
@@ -15,7 +17,7 @@ import java.util.function.Supplier;
 
 public class ParticleSettingsScreen extends Screen {
 	private static final int BUTTON_HEIGHT = 20;
-	private static final int BUTTON_WIDTH = 150;
+	private static final int BUTTON_WIDTH = 98;
 	private static final int GAP = 8;
 
 	private final Screen parent;
@@ -73,11 +75,31 @@ public class ParticleSettingsScreen extends Screen {
 		y += 26;
 		addDrawableChild(toggle(left, y, halfWidth, "Enabled", () -> settings.enabled, value -> settings.enabled = value));
 		addDrawableChild(button(right, y, halfWidth, () -> "Color: " + clean(settings.colorPreset.name()), button -> {
+			settings.markCustom();
 			settings.colorPreset = next(settings.colorPreset);
-			button.setMessage(Text.literal("Color: " + clean(settings.colorPreset.name())));
+			saveSettings();
+			rebuildWidgets();
 		}));
 
-		y += 28;
+		y += 26;
+		addDrawableChild(button(left, y, fullWidth, () -> "Preset: " + activePresetLabel(), button -> {
+			cyclePreset();
+			saveSettings();
+			rebuildWidgets();
+		}));
+
+		y += 26;
+		addDrawableChild(button(left, y, halfWidth, Text.literal("Create Preset"), button -> {
+			if (client != null) {
+				client.setScreen(new PresetNameScreen(this, "Create Preset", "Create", this::createPreset));
+			}
+		}));
+		addDrawableChild(button(right, y, halfWidth, Text.literal("Save Preset"), button -> {
+			saveCurrentPreset();
+			rebuildWidgets();
+		})).active = hasSelectedCustomPreset();
+
+		y += 30;
 		if (tab == Tab.EVENTS) {
 			addEventWidgets(left, right, y, fullWidth, halfWidth);
 		} else {
@@ -85,21 +107,27 @@ public class ParticleSettingsScreen extends Screen {
 		}
 
 		int bottomY = height - 28;
-		addDrawableChild(button(width / 2 - BUTTON_WIDTH - 4, bottomY, BUTTON_WIDTH, Text.literal("Reset"), button -> {
+		addDrawableChild(button(left, bottomY, BUTTON_WIDTH, Text.literal("Save Config"), button -> saveSettings()));
+		addDrawableChild(button(left + BUTTON_WIDTH + GAP, bottomY, BUTTON_WIDTH, Text.literal("Reset"), button -> {
 			settings.reset();
+			saveSettings();
 			rebuildWidgets();
 		}));
-		addDrawableChild(button(width / 2 + 4, bottomY, BUTTON_WIDTH, Text.literal("Done"), button -> close()));
+		addDrawableChild(button(left + (BUTTON_WIDTH + GAP) * 2, bottomY, BUTTON_WIDTH, Text.literal("Done"), button -> close()));
 	}
 
 	private void addEventWidgets(int left, int right, int y, int fullWidth, int halfWidth) {
 		addDrawableChild(button(left, y, halfWidth, () -> "Mode: " + clean(settings.particleMode.name()), button -> {
+			settings.markCustom();
 			settings.particleMode = next(settings.particleMode);
-			button.setMessage(Text.literal("Mode: " + clean(settings.particleMode.name())));
+			saveSettings();
+			rebuildWidgets();
 		}));
 		addDrawableChild(button(right, y, halfWidth, () -> "Glow: " + clean(settings.glowMode.name()), button -> {
+			settings.markCustom();
 			settings.glowMode = next(settings.glowMode);
-			button.setMessage(Text.literal("Glow: " + clean(settings.glowMode.name())));
+			saveSettings();
+			rebuildWidgets();
 		}));
 
 		y += 26;
@@ -109,6 +137,9 @@ public class ParticleSettingsScreen extends Screen {
 		y += 24;
 		addDrawableChild(toggle(left, y, halfWidth, "Walk", () -> settings.walkTrigger, value -> settings.walkTrigger = value));
 		addDrawableChild(toggle(right, y, halfWidth, "Projectiles", () -> settings.projectileTrigger, value -> settings.projectileTrigger = value));
+
+		y += 24;
+		addDrawableChild(toggle(left, y, halfWidth, "Elytra Trail", () -> settings.elytraTrigger, value -> settings.elytraTrigger = value));
 
 		y += 32;
 		addDrawableChild(slider(left, y, fullWidth, "Attack Amount", 10, 80, () -> settings.attackAmount, value -> settings.attackAmount = (int) Math.round(value), value -> Integer.toString((int) Math.round(value))));
@@ -130,12 +161,16 @@ public class ParticleSettingsScreen extends Screen {
 
 		y += 28;
 		addDrawableChild(button(left, y, halfWidth, () -> "World Mode: " + clean(settings.worldMode.name()), button -> {
+			settings.markCustom();
 			settings.worldMode = next(settings.worldMode);
-			button.setMessage(Text.literal("World Mode: " + clean(settings.worldMode.name())));
+			saveSettings();
+			rebuildWidgets();
 		}));
 		addDrawableChild(button(right, y, halfWidth, () -> "Glow: " + clean(settings.glowMode.name()), button -> {
+			settings.markCustom();
 			settings.glowMode = next(settings.glowMode);
-			button.setMessage(Text.literal("Glow: " + clean(settings.glowMode.name())));
+			saveSettings();
+			rebuildWidgets();
 		}));
 
 		y += 34;
@@ -150,10 +185,84 @@ public class ParticleSettingsScreen extends Screen {
 		addDrawableChild(slider(left, y, fullWidth, "Event Glow", 0.5, 12.0, () -> settings.glowSize, value -> settings.glowSize = value.floatValue(), ParticleSettingsScreen::format));
 	}
 
+	private void cyclePreset() {
+		List<PresetOption> options = getPresetOptions();
+		String currentKey = currentPresetKey();
+		int currentIndex = 0;
+		for (int i = 0; i < options.size(); i++) {
+			if (options.get(i).key.equals(currentKey)) {
+				currentIndex = i;
+				break;
+			}
+		}
+
+		PresetOption next = options.get((currentIndex + 1) % options.size());
+		next.apply(settings);
+	}
+
+	private List<PresetOption> getPresetOptions() {
+		List<PresetOption> options = new ArrayList<>();
+		options.add(PresetOption.customState());
+		options.add(PresetOption.builtIn(ParticleSystem.Preset.PVP, "PvP"));
+		options.add(PresetOption.builtIn(ParticleSystem.Preset.MINIMAL, "Minimal"));
+		options.add(PresetOption.builtIn(ParticleSystem.Preset.CINEMATIC, "Cinematic"));
+
+		for (String presetName : ParticleConfig.getCustomPresetNames()) {
+			options.add(PresetOption.customPreset(presetName));
+		}
+		return options;
+	}
+
+	private String currentPresetKey() {
+		if (hasSelectedCustomPreset()) {
+			return "custom:" + settings.customPresetName;
+		}
+
+		if (settings.preset == ParticleSystem.Preset.CUSTOM) {
+			return "state:custom";
+		}
+
+		return "builtin:" + settings.preset.name();
+	}
+
+	private String activePresetLabel() {
+		if (hasSelectedCustomPreset()) {
+			return settings.customPresetName;
+		}
+
+		return switch (settings.preset) {
+			case CUSTOM -> "Custom";
+			case PVP -> "PvP";
+			case MINIMAL -> "Minimal";
+			case CINEMATIC -> "Cinematic";
+		};
+	}
+
+	private boolean hasSelectedCustomPreset() {
+		return !settings.customPresetName.isBlank() && ParticleConfig.hasCustomPreset(settings.customPresetName);
+	}
+
+	private void createPreset(String name) {
+		ParticleConfig.saveCustomPreset(name, settings);
+		settings.selectCustomPreset(name);
+		saveSettings();
+	}
+
+	private void saveCurrentPreset() {
+		if (!hasSelectedCustomPreset()) {
+			return;
+		}
+
+		ParticleConfig.saveCustomPreset(settings.customPresetName, settings);
+		saveSettings();
+	}
+
 	private ButtonWidget toggle(int x, int y, int width, String label, BooleanSupplier getter, Consumer<Boolean> setter) {
 		return button(x, y, width, () -> label + ": " + (getter.getAsBoolean() ? "ON" : "OFF"), button -> {
+			settings.markCustom();
 			setter.accept(!getter.getAsBoolean());
-			button.setMessage(Text.literal(label + ": " + (getter.getAsBoolean() ? "ON" : "OFF")));
+			saveSettings();
+			rebuildWidgets();
 		});
 	}
 
@@ -166,7 +275,11 @@ public class ParticleSettingsScreen extends Screen {
 	}
 
 	private SettingSlider slider(int x, int y, int width, String label, double min, double max, DoubleSupplier getter, Consumer<Double> setter, DoubleFunction<String> formatter) {
-		return new SettingSlider(x, y, width, BUTTON_HEIGHT, label, min, max, getter, setter, formatter);
+		return new SettingSlider(x, y, width, BUTTON_HEIGHT, label, min, max, getter, value -> {
+			settings.markCustom();
+			setter.accept(value);
+			saveSettings();
+		}, formatter);
 	}
 
 	private Text labelTab(Tab value) {
@@ -196,6 +309,10 @@ public class ParticleSettingsScreen extends Screen {
 		return value.toLowerCase(Locale.ROOT).replace('_', ' ');
 	}
 
+	private void saveSettings() {
+		ParticleConfig.save(settings);
+	}
+
 	private static String format(double value) {
 		return String.format(Locale.ROOT, "%.1f", value);
 	}
@@ -203,6 +320,24 @@ public class ParticleSettingsScreen extends Screen {
 	private enum Tab {
 		EVENTS,
 		WORLD
+	}
+
+	private record PresetOption(String key, String label, Consumer<ParticleSystem.Settings> applier) {
+		private static PresetOption customState() {
+			return new PresetOption("state:custom", "Custom", ParticleSystem.Settings::markCustom);
+		}
+
+		private static PresetOption builtIn(ParticleSystem.Preset preset, String label) {
+			return new PresetOption("builtin:" + preset.name(), label, settings -> settings.applyPreset(preset));
+		}
+
+		private static PresetOption customPreset(String name) {
+			return new PresetOption("custom:" + name, name, settings -> ParticleConfig.loadCustomPreset(name, settings));
+		}
+
+		private void apply(ParticleSystem.Settings settings) {
+			applier.accept(settings);
+		}
 	}
 
 	private static class SettingSlider extends SliderWidget {
