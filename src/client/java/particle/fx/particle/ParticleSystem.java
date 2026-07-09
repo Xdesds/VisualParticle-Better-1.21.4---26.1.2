@@ -1,6 +1,6 @@
 package particle.fx.particle;
 
-import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
+import net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.VertexConsumerProvider;
 import net.minecraft.client.util.math.MatrixStack;
@@ -24,6 +24,7 @@ public final class ParticleSystem {
 	private static final int RED_COLOR = 0xFFC54A39;
 	private static final int TOTEM_DURATION = 20;
 	private static final float GRAVITY_STRENGTH = 0.04F;
+	private static final double ELYTRA_SPEED_THRESHOLD = 0.12;
 	private static final double WORLD_MIN_RADIUS = 3.0;
 	private static final double WORLD_MAX_RADIUS = 60.0;
 	private static final double WORLD_MAX_HEIGHT = 25.0;
@@ -76,6 +77,10 @@ public final class ParticleSystem {
 			walkParticleAccumulator = 0.0F;
 		}
 
+		if (settings.elytraTrigger) {
+			handleElytraParticles(client);
+		}
+
 		if (settings.projectileTrigger) {
 			handleProjectileParticles(client);
 		}
@@ -104,7 +109,7 @@ public final class ParticleSystem {
 					(Math.random() - 0.5) * 2.0 * spreadValue * settings.speed
 			);
 
-			particles.add(createParticle(position, velocity, settings.size, settings.lifeTime));
+			particles.add(createParticle(position, velocity, settings.size, settings.lifeTime, ColorRole.ATTACK));
 		}
 	}
 
@@ -119,9 +124,9 @@ public final class ParticleSystem {
 			return;
 		}
 
-		MatrixStack matrices = context.matrixStack();
+		MatrixStack matrices = context.matrices();
 		VertexConsumerProvider.Immediate immediate = CLIENT.getBufferBuilders().getEntityVertexConsumers();
-		float tickDelta = CLIENT.getRenderTickCounter().getTickDelta(true);
+		float tickDelta = CLIENT.getRenderTickCounter().getTickProgress(true);
 
 		for (Particle3D particle : particles) {
 			particle.render(matrices, immediate, settings.glowSize, tickDelta);
@@ -180,7 +185,7 @@ public final class ParticleSystem {
 					(Math.random() - 0.5) * spreadValue * settings.speed
 			);
 
-			particles.add(createParticle(position, velocity, settings.size * 0.6F, settings.lifeTime * 0.5F));
+			particles.add(createParticle(position, velocity, settings.size * 0.6F, settings.lifeTime * 0.5F, ColorRole.MOVE));
 		}
 	}
 
@@ -193,9 +198,9 @@ public final class ParticleSystem {
 			}
 
 			ProjectileEntity projectile = (ProjectileEntity) entity;
-			boolean isMoving = Math.abs(projectile.getX() - projectile.prevX) > 0.01
-					|| Math.abs(projectile.getY() - projectile.prevY) > 0.01
-					|| Math.abs(projectile.getZ() - projectile.prevZ) > 0.01;
+			boolean isMoving = Math.abs(projectile.getX() - projectile.lastX) > 0.01
+					|| Math.abs(projectile.getY() - projectile.lastY) > 0.01
+					|| Math.abs(projectile.getZ() - projectile.lastZ) > 0.01;
 
 			if (!isMoving && projectile.getVelocity().lengthSquared() <= 0.01) {
 				continue;
@@ -213,8 +218,52 @@ public final class ParticleSystem {
 						(Math.random() - 0.5) * 2.0 * spreadValue * settings.speed
 				);
 
-				particles.add(createParticle(position, velocity, settings.size * 0.5F, settings.lifeTime * 0.3F));
+				particles.add(createParticle(position, velocity, settings.size * 0.5F, settings.lifeTime * 0.3F, ColorRole.PROJECTILE));
 			}
+		}
+	}
+
+	private void handleElytraParticles(MinecraftClient client) {
+		if (!client.player.isGliding()) {
+			return;
+		}
+
+		Vec3d velocity = client.player.getVelocity();
+		double speed = velocity.length();
+		if (speed < ELYTRA_SPEED_THRESHOLD) {
+			return;
+		}
+
+		Vec3d direction = speed > 0.001 ? velocity.normalize() : client.player.getRotationVec(1.0F);
+		Vec3d center = new Vec3d(
+				client.player.getX(),
+				client.player.getY() + client.player.getHeight() * 0.55,
+				client.player.getZ()
+		).subtract(direction.multiply(0.9));
+		Vec3d side = direction.crossProduct(new Vec3d(0.0, 1.0, 0.0));
+		if (side.lengthSquared() < 0.0001) {
+			side = new Vec3d(1.0, 0.0, 0.0);
+		} else {
+			side = side.normalize();
+		}
+
+		int particleCount = Math.max(2, Math.min(6, (int) Math.round(speed * 10.0)));
+		float size = settings.size * 0.55F;
+		float lifeTime = Math.max(0.2F, settings.lifeTime * 0.45F);
+		float spreadValue = settings.spread * 0.04F;
+
+		for (int i = 0; i < particleCount; i++) {
+			double sideOffset = (i % 2 == 0 ? -0.45 : 0.45) + (Math.random() - 0.5) * 0.18;
+			Vec3d position = center
+					.add(side.multiply(sideOffset))
+					.add((Math.random() - 0.5) * 0.18, (Math.random() - 0.5) * 0.18, (Math.random() - 0.5) * 0.18);
+			Vec3d particleVelocity = velocity.multiply(-0.08).add(
+					(Math.random() - 0.5) * spreadValue * settings.speed,
+					(Math.random() - 0.5) * spreadValue * 0.6 * settings.speed,
+					(Math.random() - 0.5) * spreadValue * settings.speed
+			);
+
+			particles.add(createParticle(position, particleVelocity, size, lifeTime, ColorRole.ELYTRA));
 		}
 	}
 
@@ -241,7 +290,7 @@ public final class ParticleSystem {
 			return;
 		}
 
-		Vec3d currentPos = client.player.getPos();
+		Vec3d currentPos = client.player.getEntityPos();
 		if (lastPlayerPos != Vec3d.ZERO) {
 			playerVelocity = currentPos.subtract(lastPlayerPos);
 			playerSpeed = playerVelocity.horizontalLength();
@@ -308,12 +357,16 @@ public final class ParticleSystem {
 					? (0.15 + Math.random() * 0.2) * settings.speed
 					: (0.03 + Math.random() * 0.07) * settings.speed;
 			Vec3d velocity = new Vec3d(x * velocityScale, upward, z * velocityScale);
-			particles.add(createParticle(position, velocity, settings.size * 0.8F, settings.lifeTime * 0.8F, getTotemColor()));
+			particles.add(createParticle(position, velocity, settings.size * 0.8F, settings.lifeTime * 0.8F, getParticleColor(ColorRole.TOTEM)));
 		}
 	}
 
 	private Particle3D createParticle(Vec3d position, Vec3d velocity, float size, float lifeTime) {
 		return createParticle(position, velocity, size, lifeTime, getParticleColor());
+	}
+
+	private Particle3D createParticle(Vec3d position, Vec3d velocity, float size, float lifeTime, ColorRole role) {
+		return createParticle(position, velocity, size, lifeTime, getParticleColor(role));
 	}
 
 	private Particle3D createParticle(Vec3d position, Vec3d velocity, float size, float lifeTime, int color) {
@@ -352,7 +405,7 @@ public final class ParticleSystem {
 		);
 
 		float gravity = settings.worldPhysics ? 0.0002F : 0.0F;
-		return new Particle3D(position, velocity, getParticleColor(), settings.worldSize, settings.worldLifeTime)
+		return new Particle3D(position, velocity, getParticleColor(ColorRole.WORLD), settings.worldSize, settings.worldLifeTime)
 				.setGravity(gravity)
 				.setVelocityMultiplier(0.99F)
 				.setMode(settings.worldMode)
@@ -384,11 +437,38 @@ public final class ParticleSystem {
 			case DEFAULT -> DEFAULT_COLOR;
 			case BLUE -> BLUE_COLOR;
 			case RED -> RED_COLOR;
+			case PURPLE -> 0xFF9B5CFF;
+			case PINK -> 0xFFFF6DA4;
+			case CYAN -> 0xFF47E6FF;
+			case GREEN -> 0xFF45D982;
+			case GOLD -> 0xFFFFD166;
+			case ORANGE -> 0xFFFF8A3D;
+			case LIME -> 0xFFB6FF4D;
+			case ICE -> 0xFF9CEBFF;
+			case FIRE -> 0xFFFF4D35;
+			case GALAXY -> 0xFF6F5CFF;
+			case WHITE -> 0xFFFFFFFF;
 			case RANDOM -> RANDOM_COLORS[ThreadLocalRandom.current().nextInt(RANDOM_COLORS.length)];
 		};
 	}
 
-	private int getTotemColor() {
+	private int getParticleColor(ColorRole role) {
+		if (!settings.customColors) {
+			return role == ColorRole.TOTEM ? randomTotemColor() : getParticleColor();
+		}
+
+		int first = settings.colorPrimary(role);
+		int second = settings.colorSecondary(role);
+		if (!settings.animatedGradient || first == second) {
+			return first;
+		}
+
+		float time = (System.currentTimeMillis() % 2200L) / 2200.0F;
+		float wave = (float) ((Math.sin((time + ThreadLocalRandom.current().nextFloat() * 0.35F) * Math.PI * 2.0) + 1.0) * 0.5);
+		return blend(first, second, wave);
+	}
+
+	private int randomTotemColor() {
 		int[] totemColors = {
 				0xFF7CFC00,
 				0xFFFFD700,
@@ -400,16 +480,32 @@ public final class ParticleSystem {
 		return totemColors[ThreadLocalRandom.current().nextInt(totemColors.length)];
 	}
 
+	private static int blend(int first, int second, float progress) {
+		progress = Math.max(0.0F, Math.min(1.0F, progress));
+		int a = lerp((first >> 24) & 255, (second >> 24) & 255, progress);
+		int r = lerp((first >> 16) & 255, (second >> 16) & 255, progress);
+		int g = lerp((first >> 8) & 255, (second >> 8) & 255, progress);
+		int b = lerp(first & 255, second & 255, progress);
+		return (a << 24) | (r << 16) | (g << 8) | b;
+	}
+
+	private static int lerp(int from, int to, float progress) {
+		return Math.round(from + (to - from) * progress);
+	}
+
 	private float getGravity() {
 		return (1.0F - 0.9F) * GRAVITY_STRENGTH;
 	}
 
 	public static final class Settings {
+		public Preset preset = Preset.CUSTOM;
+		public String customPresetName = "";
 		public ColorPreset colorPreset = ColorPreset.DEFAULT;
 		public boolean enabled = true;
 		public boolean attackTrigger = true;
 		public boolean totemTrigger = true;
 		public boolean walkTrigger = true;
+		public boolean elytraTrigger = true;
 		public boolean projectileTrigger = true;
 		public boolean worldParticles = true;
 		public boolean worldPhysics = false;
@@ -427,12 +523,145 @@ public final class ParticleSystem {
 		public float worldLifeTime = 10.0F;
 		public float worldSize = 1.5F;
 		public float worldGlowSize = 3.0F;
+		public boolean customColors = false;
+		public boolean animatedGradient = true;
+		public int uiPrimaryColor = 0xFF68AEFF;
+		public int uiSecondaryColor = 0xFFFF6DA4;
+		public int attackColor = 0xFFFF6D78;
+		public int attackSecondColor = 0xFFFFC371;
+		public int moveColor = 0xFF68AEFF;
+		public int moveSecondColor = 0xFFB46DFF;
+		public int projectileColor = 0xFFFFD166;
+		public int projectileSecondColor = 0xFFFF6DA4;
+		public int elytraColor = 0xFF75F4FF;
+		public int elytraSecondColor = 0xFF68AEFF;
+		public int worldColor = 0xFF8DFFB3;
+		public int worldSecondColor = 0xFF68AEFF;
+		public int totemColor = 0xFF7CFC00;
+		public int totemSecondColor = 0xFFFFD700;
+
+		public void applyPreset(Preset preset) {
+			this.preset = preset;
+			this.customPresetName = "";
+
+			switch (preset) {
+				case CUSTOM -> {
+				}
+				case PVP -> {
+					colorPreset = ColorPreset.RED;
+					customColors = true;
+					attackTrigger = true;
+					totemTrigger = true;
+					walkTrigger = false;
+					elytraTrigger = true;
+					projectileTrigger = true;
+					worldParticles = false;
+					worldPhysics = false;
+					particleMode = Particle3D.ParticleMode.LIGHTNING;
+					worldMode = Particle3D.ParticleMode.STAR;
+					glowMode = Particle3D.GlowMode.BOTH;
+					attackAmount = 48;
+					walkAmount = 10;
+					worldAmount = 40;
+					spread = 0.9F;
+					speed = 2.6F;
+					lifeTime = 1.3F;
+					size = 0.85F;
+					glowSize = 8.5F;
+					worldLifeTime = 8.0F;
+					worldSize = 1.0F;
+					worldGlowSize = 2.0F;
+					attackColor = 0xFFFF4D5E;
+					attackSecondColor = 0xFFFFB65C;
+					moveColor = 0xFF8A8A8A;
+					moveSecondColor = 0xFFCECECE;
+					projectileColor = 0xFFFFD166;
+					projectileSecondColor = 0xFFFF4D5E;
+				}
+				case MINIMAL -> {
+					colorPreset = ColorPreset.DEFAULT;
+					customColors = true;
+					attackTrigger = true;
+					totemTrigger = true;
+					walkTrigger = false;
+					elytraTrigger = false;
+					projectileTrigger = false;
+					worldParticles = false;
+					worldPhysics = false;
+					particleMode = Particle3D.ParticleMode.LINE;
+					worldMode = Particle3D.ParticleMode.STAR;
+					glowMode = Particle3D.GlowMode.BLOOM;
+					attackAmount = 16;
+					walkAmount = 0;
+					worldAmount = 20;
+					spread = 0.45F;
+					speed = 1.2F;
+					lifeTime = 0.8F;
+					size = 0.45F;
+					glowSize = 3.0F;
+					worldLifeTime = 6.0F;
+					worldSize = 0.6F;
+					worldGlowSize = 1.2F;
+					attackColor = 0xFFB08A72;
+					attackSecondColor = 0xFFD6C2B3;
+					moveColor = 0xFF9AA2B6;
+					moveSecondColor = 0xFFBFC6D8;
+				}
+				case CINEMATIC -> {
+					colorPreset = ColorPreset.BLUE;
+					customColors = true;
+					attackTrigger = true;
+					totemTrigger = true;
+					walkTrigger = true;
+					elytraTrigger = true;
+					projectileTrigger = true;
+					worldParticles = true;
+					worldPhysics = false;
+					particleMode = Particle3D.ParticleMode.STAR_ALT;
+					worldMode = Particle3D.ParticleMode.SNOWFLAKE;
+					glowMode = Particle3D.GlowMode.BOTH;
+					attackAmount = 58;
+					walkAmount = 28;
+					worldAmount = 180;
+					spread = 1.35F;
+					speed = 1.75F;
+					lifeTime = 3.8F;
+					size = 1.15F;
+					glowSize = 10.0F;
+					worldLifeTime = 16.0F;
+					worldSize = 1.35F;
+					worldGlowSize = 4.6F;
+					attackColor = 0xFFFF6DA4;
+					attackSecondColor = 0xFF68AEFF;
+					moveColor = 0xFF75F4FF;
+					moveSecondColor = 0xFFB46DFF;
+					worldColor = 0xFF8DFFB3;
+					worldSecondColor = 0xFF68AEFF;
+				}
+			}
+		}
+
+		public void markCustom() {
+			if (preset != Preset.CUSTOM) {
+				customPresetName = "";
+			}
+			preset = Preset.CUSTOM;
+		}
+
+		public void selectCustomPreset(String name) {
+			preset = Preset.CUSTOM;
+			customPresetName = name;
+		}
+
 		public void reset() {
+			preset = Preset.CUSTOM;
+			customPresetName = "";
 			colorPreset = ColorPreset.DEFAULT;
 			enabled = true;
 			attackTrigger = true;
 			totemTrigger = true;
 			walkTrigger = true;
+			elytraTrigger = true;
 			projectileTrigger = true;
 			worldParticles = true;
 			worldPhysics = false;
@@ -450,13 +679,78 @@ public final class ParticleSystem {
 			worldLifeTime = 10.0F;
 			worldSize = 1.5F;
 			worldGlowSize = 3.0F;
+			customColors = false;
+			animatedGradient = true;
+			uiPrimaryColor = 0xFF68AEFF;
+			uiSecondaryColor = 0xFFFF6DA4;
+			attackColor = 0xFFFF6D78;
+			attackSecondColor = 0xFFFFC371;
+			moveColor = 0xFF68AEFF;
+			moveSecondColor = 0xFFB46DFF;
+			projectileColor = 0xFFFFD166;
+			projectileSecondColor = 0xFFFF6DA4;
+			elytraColor = 0xFF75F4FF;
+			elytraSecondColor = 0xFF68AEFF;
+			worldColor = 0xFF8DFFB3;
+			worldSecondColor = 0xFF68AEFF;
+			totemColor = 0xFF7CFC00;
+			totemSecondColor = 0xFFFFD700;
 		}
+
+		public int colorPrimary(ColorRole role) {
+			return switch (role) {
+				case ATTACK -> attackColor;
+				case MOVE -> moveColor;
+				case PROJECTILE -> projectileColor;
+				case ELYTRA -> elytraColor;
+				case WORLD -> worldColor;
+				case TOTEM -> totemColor;
+			};
+		}
+
+		public int colorSecondary(ColorRole role) {
+			return switch (role) {
+				case ATTACK -> attackSecondColor;
+				case MOVE -> moveSecondColor;
+				case PROJECTILE -> projectileSecondColor;
+				case ELYTRA -> elytraSecondColor;
+				case WORLD -> worldSecondColor;
+				case TOTEM -> totemSecondColor;
+			};
+		}
+	}
+
+	public enum ColorRole {
+		ATTACK,
+		MOVE,
+		PROJECTILE,
+		ELYTRA,
+		WORLD,
+		TOTEM
 	}
 
 	public enum ColorPreset {
 		DEFAULT,
 		BLUE,
 		RED,
+		PURPLE,
+		PINK,
+		CYAN,
+		GREEN,
+		GOLD,
+		ORANGE,
+		LIME,
+		ICE,
+		FIRE,
+		GALAXY,
+		WHITE,
 		RANDOM
+	}
+
+	public enum Preset {
+		CUSTOM,
+		PVP,
+		MINIMAL,
+		CINEMATIC
 	}
 }
