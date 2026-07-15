@@ -8,8 +8,9 @@
 		"Me!"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://modrinth.com/mod/visualparticles-better",
+		"sources": "https://github.com/Xdesds/VisualParticle-Better-1.21.4---26.1.2",
+		"issues": "https://github.com/Xdesds/VisualParticle-Better-1.21.4---26.1.2/issues"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/visualparticle-better/icon.png",
@@ -31,7 +32,7 @@
 	],
 	"depends": {
 		"fabricloader": ">=0.18.4",
-		"minecraft": "~1.21.4",
+		"minecraft": "~1.21.11",
 		"java": ">=21",
 		"fabric-api": "*"
 	}
