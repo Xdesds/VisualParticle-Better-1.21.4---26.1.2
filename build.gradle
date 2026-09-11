@@ -3,85 +3,106 @@ plugins {
 	id 'maven-publish'
 }
 
-version = "${project.mod_version}-${project.minecraft_version}"
-group = project.maven_group
-
 repositories {
-	// Add repositories to retrieve artifacts from in here.
-	// You should only use this when depending on other mods because
-	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
-	// for more information about repositories.
+	 mavenCentral()
 }
 
 loom {
 	splitEnvironmentSourceSets()
-
 	mods {
 		"visualparticle-better" {
 			sourceSet sourceSets.main
 			sourceSet sourceSets.client
 		}
 	}
-
 }
 
-dependencies {
-	// To change the versions see the gradle.properties file
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+def lwjglVersion = "3.3.3"
 
-	// Fabric API. This is technically optional, but you probably want it anyway.
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
-	
-}
-
-processResources {
-	def version = project.version
-	inputs.property "version", version
-
-	filesMatching("fabric.mod.json") {
-		expand "version": version
+sourceSets {
+	client {
+		java {
+			exclude "visualparticle/better/client/hud/**"
+			exclude "visualparticle/better/client/module/impl/player/**"
+			exclude "visualparticle/better/client/module/impl/utility/**"
+			exclude "visualparticle/better/client/module/impl/world/**"
+			exclude "visualparticle/better/client/module/impl/render/lyrics/**"
+			exclude "visualparticle/better/client/render/world/**"
+			exclude "visualparticle/better/client/service/**"
+			exclude "visualparticle/better/client/event/HudRenderEvent.java"
+			exclude "visualparticle/better/client/module/impl/render/AspectRatioModule.java"
+			exclude "visualparticle/better/client/module/impl/render/ChinaHatModule.java"
+			exclude "visualparticle/better/client/module/impl/render/CrosshairModule.java"
+			exclude "visualparticle/better/client/module/impl/render/HitColorModule.java"
+			exclude "visualparticle/better/client/module/impl/render/HitWaveModule.java"
+			exclude "visualparticle/better/client/module/impl/render/HoldMyItemsModule.java"
+			exclude "visualparticle/better/client/module/impl/render/InterfaceModule.java"
+			exclude "visualparticle/better/client/module/impl/render/ItemPhysicsModule.java"
+			exclude "visualparticle/better/client/module/impl/render/JumpCircleModule.java"
+			exclude "visualparticle/better/client/module/impl/render/KillEffectModule.java"
+			exclude "visualparticle/better/client/module/impl/render/LyricPrismModule.java"
+			exclude "visualparticle/better/client/module/impl/render/NightVisionModule.java"
+			exclude "visualparticle/better/client/module/impl/render/PredictionsModule.java"
+			exclude "visualparticle/better/client/module/impl/render/SwingAnimationModule.java"
+			exclude "visualparticle/better/client/module/impl/render/TargetEspModule.java"
+			exclude "visualparticle/better/client/module/impl/render/TrailsModule.java"
+			exclude "visualparticle/better/client/module/impl/render/ViewModelModule.java"
+			exclude "visualparticle/better/client/mixin/CooldownInstanceAccessor.java"
+			exclude "visualparticle/better/client/mixin/GameRendererMixin.java"
+			exclude "visualparticle/better/client/mixin/GuiMixin.java"
+			exclude "visualparticle/better/client/mixin/ItemCooldownsAccessor.java"
+			exclude "visualparticle/better/client/mixin/ItemEntityRendererMixin.java"
+			exclude "visualparticle/better/client/mixin/ItemInHandRendererMixin.java"
+			exclude "visualparticle/better/client/mixin/LevelAmbienceMixin.java"
+			exclude "visualparticle/better/client/mixin/LivingEntityRendererMixin.java"
+			exclude "visualparticle/better/client/mixin/LivingEntitySwingMixin.java"
+			exclude "visualparticle/better/client/mixin/MouseHandlerMixin.java"
+			exclude "visualparticle/better/client/mixin/StringDecomposerMixin.java"
+		}
+		resources {
+			exclude "assets/visualparticle-better/shaders/**"
+			exclude "assets/visualparticle-better/sounds/**"
+			exclude "assets/visualparticle-better/sounds.json"
+			exclude "assets/visualparticle-better/fonts/visualparticle-brand-icons.ttf"
+			exclude "assets/visualparticle-better/textures/particles/ball.png"
+			exclude "assets/visualparticle-better/textures/particles/glow.png"
+			exclude "assets/visualparticle-better/textures/particles/spark_*.png"
+		}
 	}
 }
+dependencies {
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings loom.officialMojangMappings()
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
-tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
+	implementation "org.lwjgl:lwjgl-nanovg:${lwjglVersion}"
+	include "org.lwjgl:lwjgl-nanovg:${lwjglVersion}"
+	runtimeOnly "org.lwjgl:lwjgl-nanovg:${lwjglVersion}:natives-windows"
+	include "org.lwjgl:lwjgl-nanovg:${lwjglVersion}:natives-windows"
 }
 
-java {
-	// Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
-	// if it is present.
-	// If you remove this line, sources will not be generated.
-	withSourcesJar()
+base { archivesName = project.archives_base_name }
 
+processResources {
+	inputs.property "version", project.version
+	filesMatching("fabric.mod.json") { expand "version": project.version }
+}
+
+tasks.withType(JavaCompile).configureEach { options.release = 21 }
+
+java {
+	withSourcesJar()
 	sourceCompatibility = JavaVersion.VERSION_21
 	targetCompatibility = JavaVersion.VERSION_21
 }
 
 jar {
-	def projectName = project.name
-	inputs.property "projectName", projectName
-
-	from("LICENSE") {
-		rename { "${it}_$projectName"}
-	}
+	from("LICENSE") { rename { "${it}_${project.name}" } }
 }
 
-// configure the maven publication
 publishing {
 	publications {
-		create("mavenJava", MavenPublication) {
-			from components.java
-		}
-	}
-
-	// See https://docs.gradle.org/current/userguide/publishing_maven.html for information on how to set up publishing.
-	repositories {
-		// Add repositories to publish to here.
-		// Notice: This block does NOT have the same function as the block in the top level.
-		// The repositories here will be used for publishing your artifact, not for
-		// retrieving dependencies.
+		create("mavenJava", MavenPublication) { from components.java }
 	}
 }

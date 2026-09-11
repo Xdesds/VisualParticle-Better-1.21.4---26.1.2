@@ -1,43 +1,63 @@
-# VisualParticle Better ✨
+# VisualParticle Better
 
-VisualParticle Better is a client-side visual mod that adds stylish, customizable particles to your Minecraft gameplay.
+Client-side Fabric foundation for Minecraft Java Edition 1.21.11 with a custom
+NanoVG/OpenGL HUD and ClickGUI renderer.
 
-The mod makes combat, movement, projectiles, and totem pops feel more alive with bright glowing particles, smooth motion, and multiple particle styles.
+Press **Right Shift** in game to open ClickGUI.
 
-![ft](https://cdn.modrinth.com/data/cached_images/6d3582f1e41b0b7f6f19c3cc5a3742b710759bb9_0.webp)
+## ClickGUI
 
-- Custom particle rendering in the world
-- Particles when attacking entities ⚔️
-- Particles while walking 🚶
-- Projectile trail particles 🏹
-- Totem pop particle effect 💚
-- Multiple particle modes and textures
-- Glow effects for particles ✨
-- Random color option 🌈
-- In-game settings menu
-- Opens with **Right Shift**
+The interface follows the supplied dark dashboard references:
 
-![st](https://cdn.modrinth.com/data/cached_images/1eeee7b6b2864c0353e0b983d722e0a52f1f96eb_0.webp)
+- rounded full-window panel with a fixed category sidebar
+- Combat, Movement, Visuals, Player, Misc, and Settings categories
+- selectable module cards with animated state switches
+- a dedicated settings panel for every module
+- draggable sliders, boolean toggles, mode selectors, and keybind badges
+- vector Inter text and Material Icons Round symbols
+- responsive sizing based on Minecraft's logical window dimensions
 
-You can customize the particle system directly in game:
+At a native 1920x1080 GUI surface the panel is capped at 1600x900 and centered.
+At other resolutions and Minecraft GUI scales, all spacing, radii, text, icons,
+cards, and controls use one proportional scale factor.
 
-- Particle mode
-- Glow mode
-- Enable or disable attack particles
-- Enable or disable walking particles
-- Enable or disable projectile particles
-- Enable or disable totem particles
-- Particle amount
-- Walk particle amount
-- Spread
-- Speed
-- Lifetime
-- Size
-- Glow size
+## Requirements
 
-## Why Use It? 🎮
+- JDK 21
+- A legally owned Minecraft Java Edition account for authenticated play
 
-VisualParticle Better gives Minecraft a cleaner and more dynamic visual feel without changing gameplay.  
-It is made for players who want more satisfying effects, brighter visuals, and easy customization.
+## Run
 
-Everything can be adjusted live from the settings menu, so you can quickly make the particles subtle, bright, chaotic, or minimal.
+The repository is in a directory with Cyrillic characters, so use the included
+launcher. It temporarily maps the project to an ASCII-only drive while Gradle
+runs:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 runClient
+```
+
+Build the distributable mod:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\dev.ps1 build
+```
+
+The JAR is written to `build/libs/visualparticle-better-0.0.8.jar`.
+
+## Rendering API
+
+Build a `UiDrawList` during HUD or screen preparation and submit it through
+`ClientCore.getInstance().renderer().submit(graphics, drawList)`.
+
+Available primitives include solid and gradient rectangles, antialiased rounded
+rectangles and outlines, circles, lines, nested scissors, vector text, and icon
+glyphs. NanoVG executes the command list in Minecraft's picture-in-picture GUI
+draw phase, preserving the 1.21.11 extraction/draw ordering.
+
+## Fonts and icons
+
+- Inter is bundled under the SIL Open Font License 1.1.
+- Material Icons Round is bundled under Apache License 2.0.
+- The complete license texts are next to the font resources.
+
+The current distributable bundles the Windows NanoVG native library.
