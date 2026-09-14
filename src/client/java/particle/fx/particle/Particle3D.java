@@ -18,6 +18,7 @@ import java.util.concurrent.ThreadLocalRandom;
 final class Particle3D {
 	enum ParticleMode {
 		CUBES,
+		CRYSTALS,
 		CROWN,
 		CUBE_BLAST,
 		DOLLAR,
@@ -43,6 +44,7 @@ final class Particle3D {
 	private static final int FADE_OUT_MS = 250;
 	private static final ParticleMode[] RANDOM_MODES = {
 			ParticleMode.CUBES,
+			ParticleMode.CRYSTALS,
 			ParticleMode.CROWN,
 			ParticleMode.CUBE_BLAST,
 			ParticleMode.DOLLAR,
@@ -209,7 +211,7 @@ final class Particle3D {
 			return;
 		}
 
-		Vec3d cameraPos = CLIENT.gameRenderer.getCamera().getPos();
+		Vec3d cameraPos = CLIENT.gameRenderer.getCamera().getCameraPos();
 		float cameraYaw = CLIENT.gameRenderer.getCamera().getYaw();
 		float cameraPitch = CLIENT.gameRenderer.getCamera().getPitch();
 
@@ -223,6 +225,8 @@ final class Particle3D {
 
 		if (actualMode == ParticleMode.CUBES) {
 			renderCube(matrices, vertexConsumers, relX, relY, relZ, alpha, glowSize, cameraYaw, cameraPitch);
+		} else if (actualMode == ParticleMode.CRYSTALS) {
+			renderCrystal(matrices, vertexConsumers, relX, relY, relZ, alpha, glowSize, cameraYaw, cameraPitch);
 		} else {
 			renderTextured(matrices, vertexConsumers, relX, relY, relZ, alpha, glowSize, cameraYaw, cameraPitch);
 		}
@@ -305,6 +309,33 @@ final class Particle3D {
 		matrices.pop();
 	}
 
+	private void renderCrystal(MatrixStack matrices, VertexConsumerProvider vertexConsumers, float relX, float relY, float relZ, float alpha, float glowSize, float cameraYaw, float cameraPitch) {
+		long now = System.currentTimeMillis();
+		float rotationAnim = (float) (now % 7200L) / 7200.0F * 360.0F;
+		float pulse = 1.0F + (float) Math.sin((now + phase * 100.0F) / 320.0F) * 0.04F;
+		int glowColor = ColorUtil.withAlpha(color, alpha);
+		float crystalSize = scale * 0.58F * pulse;
+		float crystalGlow1 = crystalSize * Math.min(glowSize, 3.0F) * 0.28F;
+		float crystalGlow2 = crystalSize * Math.min(glowSize, 3.0F) * 0.12F;
+
+		matrices.push();
+		matrices.translate(relX, relY, relZ);
+		matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(rotationAnim + this.phase));
+		matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(12.0F + (float) Math.sin((now + phase * 70.0F) / 450.0F) * 8.0F));
+		Matrix4f matrix = matrices.peek().getPositionMatrix();
+		ParticleRenderer.drawCrystal(vertexConsumers.getBuffer(ParticleRenderLayers.QUADS), matrix, color, alpha * 0.18F, crystalSize);
+		ParticleRenderer.drawCrystalLines(vertexConsumers.getBuffer(ParticleRenderLayers.LINES), matrix, ColorUtil.withAlpha(color, alpha * 0.85F), crystalSize);
+		matrices.pop();
+
+		matrices.push();
+		matrices.translate(relX, relY, relZ);
+		matrices.multiply(RotationAxis.POSITIVE_Y.rotationDegrees(-cameraYaw));
+		matrices.multiply(RotationAxis.POSITIVE_X.rotationDegrees(cameraPitch));
+		Matrix4f glowMatrix = matrices.peek().getPositionMatrix();
+		renderCrystalGlow(vertexConsumers, glowMatrix, glowColor, alpha, crystalGlow1, crystalGlow2);
+		matrices.pop();
+	}
+
 	private void renderTextured(MatrixStack matrices, VertexConsumerProvider vertexConsumers, float relX, float relY, float relZ, float alpha, float glowSize, float cameraYaw, float cameraPitch) {
 		Identifier texture = getTexture();
 		if (texture == null) {
@@ -357,6 +388,16 @@ final class Particle3D {
 
 		if (glowMode == GlowMode.BLOOM_SAMPLE || glowMode == GlowMode.BOTH) {
 			ParticleRenderer.drawGlow(vertexConsumers.getBuffer(ParticleRenderLayers.GLOW.apply(GLOW_BLOOM_SAMPLE)), matrix, glowColor, (int) (140.0F * alpha), sizeSecondary);
+		}
+	}
+
+	private void renderCrystalGlow(VertexConsumerProvider vertexConsumers, Matrix4f matrix, int glowColor, float alpha, float sizePrimary, float sizeSecondary) {
+		if (glowMode == GlowMode.BLOOM || glowMode == GlowMode.BOTH) {
+			ParticleRenderer.drawGlow(vertexConsumers.getBuffer(ParticleRenderLayers.GLOW.apply(GLOW_BLOOM)), matrix, glowColor, (int) (18.0F * alpha), sizePrimary);
+		}
+
+		if (glowMode == GlowMode.BLOOM_SAMPLE || glowMode == GlowMode.BOTH) {
+			ParticleRenderer.drawGlow(vertexConsumers.getBuffer(ParticleRenderLayers.GLOW.apply(GLOW_BLOOM_SAMPLE)), matrix, glowColor, (int) (32.0F * alpha), sizeSecondary);
 		}
 	}
 }

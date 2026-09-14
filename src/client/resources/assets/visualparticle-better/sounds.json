@@ -1,0 +1,62 @@
+{
+  "nursultan_off": {
+    "sounds": [
+      "visualparticle-better:nursultan_off"
+    ]
+  },
+  "nursultan_on": {
+    "sounds": [
+      "visualparticle-better:nursultan_on"
+    ]
+  },
+  "celestial_off": {
+    "sounds": [
+      "visualparticle-better:celestial_off"
+    ]
+  },
+  "celestial_on": {
+    "sounds": [
+      "visualparticle-better:celestial_on"
+    ]
+  },
+  "smooth_off": {
+    "sounds": [
+      "visualparticle-better:smooth_off"
+    ]
+  },
+  "smooth_on": {
+    "sounds": [
+      "visualparticle-better:smooth_on"
+    ]
+  },
+  "akrien_on": {
+    "sounds": [
+      "visualparticle-better:akrien_on"
+    ]
+  },
+  "akrien_off": {
+    "sounds": [
+      "visualparticle-better:akrien_off"
+    ]
+  },
+  "tech_on": {
+    "sounds": [
+      "visualparticle-better:tech_on"
+    ]
+  },
+  "tech_off": {
+    "sounds": [
+      "visualparticle-better:tech_off"
+    ]
+  },
+  "blop_on": {
+    "sounds": [
+      "visualparticle-better:blop_on"
+    ]
+  },
+  "blop_off": {
+    "sounds": [
+      "visualparticle-better:blop_off"
+    ]
+  }
+}

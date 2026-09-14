@@ -1,0 +1,57 @@
+# Changelog
+
+### - New version 0.0.8 — Minecraft 1.21.11
+
+- Added a completely new ClickGUI designed specifically for VisualParticle Better.
+- Added dedicated settings tabs for General, Events, World, Colors, and Presets.
+- Added smooth navigation animations, scrolling, dropdown menus, sliders, switches, and rounded panels.
+- Improved the ClickGUI layout for a cleaner and more compact appearance.
+- Simplified the sidebar and removed unnecessary profile, Premium, and decorative elements.
+- Added a redesigned Color Picker with saturation, brightness, hue, transparency, color preview, and HEX controls.
+- Added Russian and English language switching directly inside the ClickGUI.
+- Added Russia and Great Britain flags to the language selector.
+- Added full localization for tabs, particle settings, descriptions, modes, presets, and interface controls.
+- Added Discord Rich Presence support for VisualParticle Better.
+- Added Discord activity details with Mod Build 0.0.8.
+- Added privacy-safe Discord statuses for menus, singleplayer, and multiplayer.
+- Added Discord RPC buttons for Modrinth, CurseForge, and GitHub.
+- Added complete particle settings for attacks, totems, walking, elytra flight, projectiles, and the surrounding world.
+- Added particle shape selection, color presets, custom gradients, physics, amount, spread, speed, lifetime, size, and glow controls.
+- Added PvP, Minimal, Cinematic, and Custom particle presets.
+- Improved particle movement smoothness with interpolation between game ticks.
+- Restored the proper VisualParticle Better bloom and glow appearance.
+- Improved glow positioning, scale, transparency, and fade animations.
+- Optimized particle and glow rendering for significantly better FPS.
+- Fixed jerky particle movement and incorrectly layered glow effects.
+- Fixed rendering issues that could cause particles to leave distorted trails.
+- Fixed a render-buffer error that could crash the client during particle rendering.
+- Reduced the final mod size to approximately 2.6 MB.
+- Updated the mod version and Discord build version to 0.0.8.
+
+### - Новая версия 0.0.8 — Minecraft 1.21.11
+
+- Добавлен полностью новый ClickGUI, разработанный специально для VisualParticle Better.
+- Добавлены отдельные вкладки настроек: «Главное», «События», «Мир», «Цвета» и «Пресеты».
+- Добавлены плавные анимации навигации, прокрутка, выпадающие списки, слайдеры, переключатели и скруглённые панели.
+- Улучшена компоновка ClickGUI — интерфейс стал чище и компактнее.
+- Упрощена боковая панель, удалены ненужные профильные, Premium и декоративные элементы.
+- Добавлен переработанный Color Picker с настройкой насыщенности, яркости, оттенка, прозрачности, предпросмотром цвета и HEX-значением.
+- Добавлено переключение русского и английского языка прямо внутри ClickGUI.
+- Добавлены флаги России и Великобритании для кнопки выбора языка.
+- Добавлена полная локализация вкладок, настроек партиклов, описаний, режимов, пресетов и элементов управления.
+- Добавлена поддержка Discord Rich Presence для VisualParticle Better.
+- Добавлено отображение Mod Build 0.0.8 в Discord activity.
+- Добавлены безопасные Discord-статусы для меню, одиночной и сетевой игры.
+- Добавлены Discord RPC кнопки для Modrinth, CurseForge и GitHub.
+- Добавлены полные настройки партиклов атаки, тотема, ходьбы, полёта на элитрах, снарядов и окружающего мира.
+- Добавлены выбор формы частиц, цветовые пресеты, пользовательские градиенты, физика, количество, разброс, скорость, время жизни, размер и свечение.
+- Добавлены пресеты партиклов PvP, Minimal, Cinematic и Custom.
+- Улучшена плавность движения партиклов благодаря интерполяции между игровыми тиками.
+- Восстановлен правильный внешний вид bloom и glow VisualParticle Better.
+- Улучшены позиционирование, масштаб, прозрачность и анимация затухания свечения.
+- Оптимизирован рендер партиклов и glow для значительного повышения FPS.
+- Исправлено дёрганое движение частиц и неправильное наложение glow-эффектов.
+- Исправлены проблемы рендера, из-за которых частицы оставляли кривые следы.
+- Исправлена ошибка render buffer, которая могла вызывать краш клиента во время отрисовки частиц.
+- Размер итогового мода уменьшен примерно до 2.6 МБ.
+- Версия мода и версия сборки в Discord обновлены до 0.0.8.
