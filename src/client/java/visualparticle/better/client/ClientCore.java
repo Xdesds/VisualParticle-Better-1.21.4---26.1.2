@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 public final class ClientCore {
 	public static final String MOD_ID = "visualparticle-better";
 	public static final String NAME = "VisualParticle Better";
-	public static final String VERSION = "0.0.8";
+	public static final String VERSION = "0.0.9";
 	public static final Logger LOGGER = LoggerFactory.getLogger(NAME);
 	private static final ClientCore INSTANCE = new ClientCore();
 
@@ -49,7 +49,7 @@ public final class ClientCore {
 		modules.register(new ParticlesModule());
 		modules.enableDefaults();
 		discordPresence.start();
-		WorldRenderEvents.AFTER_ENTITIES.register(context -> events.post(
+		WorldRenderEvents.END_MAIN.register(context -> events.post(
 				new WorldRenderEvent(context, context.gameRenderer().getMainCamera().getPartialTickTime())));
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			events.post(new ClientTickEvent(++ticks));

@@ -49,7 +49,15 @@ public final class VisualParticleClickGuiScreen extends Screen {
 	private float scrollOffset,scrollTarget,maxScroll;
 	private long lastFrame=System.nanoTime();
 
-	public VisualParticleClickGuiScreen(){super(Component.literal("Visual Particle Settings"));if(!categories.isEmpty()&&!categories.getFirst().modules().isEmpty())expanded=categories.getFirst().modules().getFirst();if(Boolean.getBoolean("visualparticle-better.previewColorPicker")&&categories.size()>3){categoryIndex=3;expanded=categories.get(3).modules().getFirst();openColor=expanded.settings.stream().filter(ColorValue.class::isInstance).map(ColorValue.class::cast).findFirst().orElse(null);}}
+	public VisualParticleClickGuiScreen(){
+		super(Component.literal("Visual Particle Settings"));
+		if(!categories.isEmpty()&&!categories.getFirst().modules().isEmpty())expanded=categories.getFirst().modules().getFirst();
+		for(int i=0;i<categories.size();i++){
+			Category category=categories.get(i);
+			if(Boolean.getBoolean("visualparticle-better.previewPresets")&&"Presets".equals(category.name())){categoryIndex=i;expanded=category.modules().getFirst();}
+			if(Boolean.getBoolean("visualparticle-better.previewColorPicker")&&"Rendering".equals(category.name())){categoryIndex=i;expanded=category.modules().getFirst();openColor=expanded.settings.stream().filter(ColorValue.class::isInstance).map(ColorValue.class::cast).findFirst().orElse(null);}
+		}
+	}
 
 	@Override public void removed(){ClientCore.getInstance().modules().find("particles").filter(ParticlesModule.class::isInstance).map(ParticlesModule.class::cast).ifPresent(ParticlesModule::saveConfig);super.removed();}
 
@@ -65,16 +73,19 @@ public final class VisualParticleClickGuiScreen extends Screen {
 			GLFW.GLFW_MOUSE_BUTTON_RIGHT)==GLFW.GLFW_PRESS;
 		boolean rightPressed=rightDown&&!previousRightDown;
 		Layout l=Layout.create(width,height);
+		boolean choiceListClick=pressed&&openChoice!=null&&dropdown!=null&&hit(mouseX,mouseY,dropdown.x,dropdown.y+dropdown.headerH+2*l.s,dropdown.w,dropdown.choice.values.size()*dropdown.rowH+4*l.s);
+		boolean groupListClick=pressed&&openGroup!=null&&groupDropdown!=null&&hit(mouseX,mouseY,groupDropdown.x,groupDropdown.y+groupDropdown.headerH+2*l.s,groupDropdown.w,groupDropdown.group.values.size()*groupDropdown.rowH+4*l.s);
+		boolean overlayListClick=choiceListClick||groupListClick;
 		if(pressed&&openChoice!=null&&dropdown!=null&&!dropdown.contains(mouseX,mouseY))openChoice=null;
 		if(pressed&&openGroup!=null&&groupDropdown!=null&&!groupDropdown.contains(mouseX,mouseY))openGroup=null;
 		dropdown=null;
 		groupDropdown=null;
 		UiDrawList ui=new UiDrawList();
 		backdrop(ui,l);
-		sidebar(ui,l,mouseX,mouseY,pressed,dt);
+		sidebar(ui,l,mouseX,mouseY,pressed&&!overlayListClick,dt);
 		Category category=categories.get(categoryIndex);
-		header(ui,l,mouseX,mouseY,pressed);
-		moduleGrid(ui,l,category,mouseX,mouseY,down,pressed,rightPressed,dt);
+		header(ui,l,mouseX,mouseY,pressed&&!overlayListClick);
+		moduleGrid(ui,l,category,mouseX,mouseY,down,pressed&&!overlayListClick,rightPressed&&!overlayListClick,dt);
 		drawDropdown(ui,l,mouseX,mouseY,pressed);
 		ClientCore.getInstance().renderer().submit(graphics,ui);
 		drawLanguageFlag(graphics,l);
@@ -152,6 +163,7 @@ public final class VisualParticleClickGuiScreen extends Screen {
 			.line(l.mainX,l.y+42*l.s,l.mainX+l.mainW,l.y+42*l.s,Math.max(.5f,l.s*.6f),BORDER);
 	}
 	private void moduleGrid(UiDrawList ui,Layout l,Category category,int mx,int my,boolean down,boolean pressed,boolean rightPressed,float dt){
+		if("Presets".equals(category.name())&&search.isBlank()){drawPresetGallery(ui,l,mx,my,pressed);return;}
 		List<Module> visible=new ArrayList<>();
 		String query=search.toLowerCase(Locale.ROOT).trim();
 		if(query.isEmpty())visible.addAll(category.modules());
@@ -191,6 +203,32 @@ public final class VisualParticleClickGuiScreen extends Screen {
 		ui.popScissor();
 	}
 
+	private void drawPresetGallery(UiDrawList ui,Layout l,int mx,int my,boolean pressed){
+		String[] names={"Purple PvP","Minimal","Cinematic","Storm","Arcane","Custom"};
+		String[] descriptions={"Hearts + vivid purple glow","Clean style, maximum FPS","Soft bloom for showcase shots","Strong wind and turbulence","Cyan-violet mystic vortex","Your hand-tuned settings"};
+		int[] icons={0xE91D,0xE3F4,0xE8DA,0xE430,0xE3A5,0xE869};
+		int[] colors={0xFFAD6BFF,0xFF8FA3B8,0xFFFFB56B,0xFF62B6FF,0xFF65E6D2,0xFFE8EAF0};
+		float top=l.y+52*l.s,gap=8*l.s,w=(l.mainW-gap)/2,h=58*l.s;
+		ui.strongText(l.mainX,top,10*l.s,WHITE,UiLanguage.text("Preset gallery"))
+			.text(l.mainX,top+13*l.s,6.4f*l.s,MUTED,UiLanguage.text("Build a complete particle style in one click"));
+		top+=25*l.s;
+		String active=particles().activePresetName();
+		for(int i=0;i<names.length;i++){
+			int col=i%2,row=i/2;float x=l.mainX+col*(w+gap),y=top+row*(h+gap);
+			boolean selected=names[i].equals(active),over=hit(mx,my,x,y,w,h);
+			if(pressed&&over){particles().applyPresetByName(names[i]);for(Category c:categories)for(Module m:c.modules())m.settings.forEach(Setting::refresh);active=names[i];openChoice=null;openGroup=null;openColor=null;}
+			if(selected)for(int glowLayer=4;glowLayer>0;glowLayer--)ui.roundedRect(x-glowLayer*l.s,y-glowLayer*l.s,w+glowLayer*2*l.s,h+glowLayer*2*l.s,8*l.s,0x08000000|(colors[i]&0x00FFFFFF));
+			ui.gradientRoundedRect(x,y,w,h,7*l.s,selected?(0x2B000000|(colors[i]&0x00FFFFFF)):over?0xFF171A21:0xFF111319,0xFF0D0F14,true)
+				.outlineRoundedRect(x,y,w,h,7*l.s,Math.max(.6f,l.s*(selected?1.1f:.65f)),selected?colors[i]:0xFF242731)
+				.circle(x+18*l.s,y+20*l.s,11*l.s,selected?(0x44000000|(colors[i]&0x00FFFFFF)):0xFF1B1E26)
+				.icon(x+18*l.s,y+20*l.s,12*l.s,selected?colors[i]:TEXT,icons[i])
+				.strongText(x+36*l.s,y+15*l.s,7.7f*l.s,selected?WHITE:TEXT,UiLanguage.option(names[i]))
+				.text(x+36*l.s,y+29*l.s,5.8f*l.s,MUTED,UiLanguage.text(descriptions[i]));
+			if(selected)ui.roundedRect(x+36*l.s,y+38*l.s,35*l.s,12*l.s,6*l.s,0x33000000|(colors[i]&0x00FFFFFF))
+				.centeredText(x+53.5f*l.s,y+44*l.s,5.5f*l.s,colors[i],UiLanguage.text("ACTIVE"),true);
+		}
+		maxScroll=scrollTarget=scrollOffset=0;
+	}
 	private void drawSettings(UiDrawList ui,Layout l,Module module,float x,float y,float w,
 			int mx,int my,boolean down,boolean pressed,float dt){
 		for(Setting setting:module.settings){

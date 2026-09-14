@@ -44,6 +44,7 @@ public final class ClickGuiModel {
 		String name();
 		String hint();
 		default boolean visible() { return true; }
+		default void refresh() {}
 	}
 
 	public static final class Toggle implements Setting {
@@ -86,6 +87,7 @@ public final class ClickGuiModel {
 					: String.format(java.util.Locale.ROOT, "%.1f", value);
 			return formatted + suffix;
 		}
+		@Override public void refresh(){model.setValue(backing.value());}
 		public void sync() { backing.set(model.value()); }
 	}
 
@@ -104,6 +106,7 @@ public final class ClickGuiModel {
 		public boolean visible() { return backing.visible(); }
 		public String value() { return UiLanguage.option(values.get(selected)); }
 		public String display(int index) { return UiLanguage.option(values.get(index)); }
+		@Override public void refresh(){selected=Math.max(0,values.indexOf(backing.value()));}
 		public void next() { select((selected + 1) % values.size()); }
 		public void select(int index) {
 			selected = Math.max(0, Math.min(values.size() - 1, index));
@@ -122,6 +125,7 @@ public final class ClickGuiModel {
 		public String name() { return UiLanguage.text(backing.name()); }
 		public String hint() { return UiLanguage.text(backing.hint()); }
 		public boolean visible() { return backing.visible(); }
+		@Override public void refresh(){values.forEach(Toggle::refresh);}
 		public String summary() {
 			long enabled = values.stream().filter(value -> value.value).count();
 			return enabled + "/" + values.size() + " " + UiLanguage.text("enabled");
@@ -151,10 +155,12 @@ public final class ClickGuiModel {
 		visualparticle.better.client.module.Module core = ClientCore.getInstance().modules().find("particles").orElseThrow();
 		ParticlesModule particles = (ParticlesModule) core;
 		return List.of(
-				section(core, particles, "General", 0xE8B8),
-				section(core, particles, "Events", 0xE7F4),
-				section(core, particles, "World", 0xE80B),
-				section(core, particles, "Colors", 0xE40A),
+				section(core, particles, "Combat", 0xE7F4),
+				section(core, particles, "Movement", 0xE566),
+				section(core, particles, "Projectiles", 0xE3E8),
+				section(core, particles, "Blocks", 0xE1B1),
+				section(core, particles, "Items", 0xE8CC),
+				section(core, particles, "Rendering", 0xE40A),
 				section(core, particles, "Presets", 0xE8F4));
 	}
 
